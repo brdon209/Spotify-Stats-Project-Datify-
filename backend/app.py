@@ -3,6 +3,15 @@ from spotipy.oauth2 import SpotifyOAuth
 from flask import Flask, jsonify
 from flask_cors import CORS
 
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  # load variables from .env
+
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+REDIRECT_URI = os.getenv("REDIRECT_URI")
+
 app = Flask(__name__)
 CORS(app)
 
@@ -14,9 +23,7 @@ def home():
     return jsonify({"message": "Hello from Flask backend!"})
 
 # Spotify credentials
-CLIENT_ID = "5a48f2e643ff4bfd9c990453c02d7a3f"
-CLIENT_SECRET = "824a89e647cb48ef9491460bf9716757"
-REDIRECT_URI = "http://127.0.0.1:8000/callback"
+
 
 scope = "user-top-read"
 
