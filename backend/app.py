@@ -1,10 +1,11 @@
 import os
 from datetime import datetime
-from flask import Flask, jsonify, redirect, request, session, url_for
+from flask import Flask, jsonify, redirect, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+from spotipy.exceptions import SpotifyException
 
 load_dotenv()  # load variables from .env
 
@@ -14,17 +15,31 @@ REDIRECT_URI = os.getenv("REDIRECT_URI")
 
 app = Flask(__name__)
 app.secret_key = "super_secret_key"  # for sessions
-CORS(app)
+CORS(app,
+     origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "OPTIONS"],
+     supports_credentials=True)
+
+# Global error handler for Spotify API errors
+@app.errorhandler(SpotifyException)
+def handle_spotify_error(error):
+    return jsonify({"error": f"Spotify API error: {str(error)}"}), 401
+
+@app.errorhandler(Exception)
+def handle_generic_error(error):
+    return jsonify({"error": f"Server error: {str(error)}"}), 500
 
 # Spotify scope
 scope = "user-top-read user-read-recently-played"
 
-# Helper function to get Spotify object for current user
+# Helper function to get Spotify object from access token in request
 def get_user_spotify():
-    token_info = session.get("token_info", None)
-    if not token_info:
+    # Get token from Authorization header
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
         return None
-    access_token = token_info["access_token"]
+    access_token = auth_header.split(" ")[1]
     return spotipy.Spotify(auth=access_token)
 
 # -------------------------
@@ -35,7 +50,9 @@ def login():
     sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
                             client_secret=CLIENT_SECRET,
                             redirect_uri=REDIRECT_URI,
-                            scope=scope)
+                            scope=scope,
+                            open_browser=False,
+                            cache_handler=None)
     auth_url = sp_oauth.get_authorize_url()
     return redirect(auth_url)
 
@@ -44,18 +61,14 @@ def callback():
     sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
                             client_secret=CLIENT_SECRET,
                             redirect_uri=REDIRECT_URI,
-                            scope=scope)
+                            scope=scope,
+                            open_browser=False,
+                            cache_handler=None)
     code = request.args.get("code")
-    token_info = sp_oauth.get_access_token(code)
-    session["token_info"] = token_info
-    return redirect(url_for("dashboard"))
-
-# Optional dashboard page (simple JSON for now)
-@app.route("/dashboard")
-def dashboard():
-    if not session.get("token_info"):
-        return redirect("/login")
-    return jsonify({"message": "You are logged in! Use the endpoints to see your Spotify stats."})
+    token_info = sp_oauth.get_access_token(code, as_dict=True)
+    access_token = token_info["access_token"]
+    # Redirect back to the frontend with the token in the URL
+    return redirect(f"http://127.0.0.1:3000?token={access_token}")
 
 # -------------------------
 # Data routes( stats itself)))) (all use current user's token)
@@ -68,7 +81,7 @@ def home():
 def top_artists():
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
+        return jsonify({"error": "Not authenticated"}), 401
     results = sp.current_user_top_artists(limit=10, time_range="short_term")
     artists = [artist['name'] for artist in results['items']]
     return jsonify({"top_artists_last_4_weeks": artists})
@@ -77,7 +90,7 @@ def top_artists():
 def top_tracks():
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
+        return jsonify({"error": "Not authenticated"}), 401
     results = sp.current_user_top_tracks(limit=10, time_range="short_term")
     tracks = [{"name": t["name"], "artist": t["artists"][0]["name"]} for t in results["items"]]
     return jsonify({"top_tracks_last_4_weeks": tracks})
@@ -86,7 +99,7 @@ def top_tracks():
 def top_artists_medium():
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
+        return jsonify({"error": "Not authenticated"}), 401
     results = sp.current_user_top_artists(limit=10, time_range="medium_term")
     artists = [artist["name"] for artist in results["items"]]
     return jsonify({"top_artists_last_6_months": artists})
@@ -95,7 +108,7 @@ def top_artists_medium():
 def top_artists_long():
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
+        return jsonify({"error": "Not authenticated"}), 401
     results = sp.current_user_top_artists(limit=10, time_range="long_term")
     artists = [artist["name"] for artist in results["items"]]
     return jsonify({"top_artists_all_time": artists})
@@ -104,7 +117,7 @@ def top_artists_long():
 def recently_played():
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
+        return jsonify({"error": "Not authenticated"}), 401
     results = sp.current_user_recently_played(limit=20)
     tracks = [{"name": item["track"]["name"], "artist": item["track"]["artists"][0]["name"]}
               for item in results["items"]]
@@ -114,7 +127,7 @@ def recently_played():
 def hidden_gems():
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
+        return jsonify({"error": "Not authenticated"}), 401
     results = sp.current_user_top_tracks(limit=50, time_range="medium_term")
     tracks = [{"name": t["name"], "artist": t["artists"][0]["name"], "popularity": t["popularity"]}
               for t in results["items"] if t["popularity"] < 50]
@@ -124,7 +137,7 @@ def hidden_gems():
 def most_skipped():
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
+        return jsonify({"error": "Not authenticated"}), 401
     results = sp.current_user_recently_played(limit=50)
     tracks = {}
     for item in results["items"]:
@@ -138,7 +151,7 @@ def most_skipped():
 def top_artist_morning():
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
+        return jsonify({"error": "Not authenticated"}), 401
     results = sp.current_user_recently_played(limit=50)
     morning_tracks = [item for item in results["items"]
                       if 5 <= datetime.fromisoformat(item["played_at"][:-1]).hour < 11]
@@ -153,7 +166,7 @@ def top_artist_morning():
 def top_artist_evening():
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
+        return jsonify({"error": "Not authenticated"}), 401
     results = sp.current_user_recently_played(limit=50)
     evening_tracks = [item for item in results["items"]
                       if 17 <= datetime.fromisoformat(item["played_at"][:-1]).hour < 23]
@@ -168,8 +181,8 @@ def top_artist_evening():
 def longest_listening_streak():
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
-    results = sp.current_user_recently_played(limit=200)
+        return jsonify({"error": "Not authenticated"}), 401
+    results = sp.current_user_recently_played(limit=50)
     if not results["items"]:
         return jsonify({"longest_streak_days": 0})
     dates = sorted({datetime.fromisoformat(item["played_at"][:-1]).date() for item in results["items"]})
@@ -182,71 +195,76 @@ def longest_listening_streak():
             current_streak = 1
     return jsonify({"longest_streak_days": max_streak})
 
-@app.route("/happiest-track")
-def happiest_track():
+@app.route("/most-popular-track")
+def most_popular_track():
+    """Your most mainstream track - highest popularity score"""
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
-    
+        return jsonify({"error": "Not authenticated"}), 401
+
     results = sp.current_user_top_tracks(limit=50, time_range="medium_term")
-    track_ids = [t["id"] for t in results["items"]]
-    features = sp.audio_features(track_ids)
-    
-    happiest = max(zip(results["items"], features), key=lambda x: x[1]["valence"])
-    track, feat = happiest
-    
+    if not results["items"]:
+        return jsonify({"track": "Not available", "artist": "", "popularity": 0})
+
+    most_popular = max(results["items"], key=lambda t: t["popularity"])
     return jsonify({
-        "track": track["name"],
-        "artist": track["artists"][0]["name"],
-        "valence": feat["valence"]
+        "track": most_popular["name"],
+        "artist": most_popular["artists"][0]["name"],
+        "popularity": most_popular["popularity"]
     })
 
-
-@app.route("/top-tracks-averages")
-def top_tracks_averages():
+@app.route("/least-popular-track")
+def least_popular_track():
+    """Your most underground/obscure track - lowest popularity score"""
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
-    
-    results = sp.current_user_top_tracks(limit=20, time_range="medium_term")
-    track_ids = [t["id"] for t in results["items"]]
-    features = sp.audio_features(track_ids)
-    
-    avg_valence = sum(f["valence"] for f in features) / len(features)
-    avg_energy = sum(f["energy"] for f in features) / len(features)
-    avg_dance = sum(f["danceability"] for f in features) / len(features)
-    
+        return jsonify({"error": "Not authenticated"}), 401
+
+    results = sp.current_user_top_tracks(limit=50, time_range="medium_term")
+    if not results["items"]:
+        return jsonify({"track": "Not available", "artist": "", "popularity": 0})
+
+    least_popular = min(results["items"], key=lambda t: t["popularity"])
     return jsonify({
-        "avg_valence": avg_valence,
-        "avg_energy": avg_energy,
-        "avg_danceability": avg_dance
+        "track": least_popular["name"],
+        "artist": least_popular["artists"][0]["name"],
+        "popularity": least_popular["popularity"]
     })
 
-@app.route("/mood-distribution")
-def mood_distribution():
+@app.route("/popularity-distribution")
+def popularity_distribution():
+    """Distribution of track popularity: underground (<30), moderate (30-60), mainstream (>60)"""
     sp = get_user_spotify()
     if not sp:
-        return redirect("/login")
-    
-    # Get top 50 tracks (medium term for more data)
+        return jsonify({"error": "Not authenticated"}), 401
+
     results = sp.current_user_top_tracks(limit=50, time_range="medium_term")
-    track_ids = [track["id"] for track in results["items"]]
-    
-    # Get audio features
-    features = sp.audio_features(track_ids)
-    
-    # Classify valence into Low, Medium, High
-    mood_counts = {"low": 0, "medium": 0, "high": 0}
-    for feat in features:
-        valence = feat["valence"]
-        if valence < 0.33:
-            mood_counts["low"] += 1
-        elif valence < 0.66:
-            mood_counts["medium"] += 1
+
+    distribution = {"underground": 0, "moderate": 0, "mainstream": 0}
+    for track in results["items"]:
+        pop = track["popularity"]
+        if pop < 30:
+            distribution["underground"] += 1
+        elif pop < 60:
+            distribution["moderate"] += 1
         else:
-            mood_counts["high"] += 1
-    
-    return jsonify({"mood_distribution": mood_counts})
+            distribution["mainstream"] += 1
+
+    return jsonify({"popularity_distribution": distribution})
+
+@app.route("/avg-popularity")
+def avg_popularity():
+    """Average popularity of your top tracks"""
+    sp = get_user_spotify()
+    if not sp:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    results = sp.current_user_top_tracks(limit=50, time_range="medium_term")
+    if not results["items"]:
+        return jsonify({"avg_popularity": 0})
+
+    avg = sum(t["popularity"] for t in results["items"]) / len(results["items"])
+    return jsonify({"avg_popularity": round(avg, 1)})
 
 
 
