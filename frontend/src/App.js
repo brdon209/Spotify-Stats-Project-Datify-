@@ -152,7 +152,7 @@ function App() {
               Connect Your World
             </h2>
             <p style={{ color: "rgba(255,255,255,0.7)", marginBottom: "40px", fontSize: "17px" }}>
-              Dive deep into your listening patterns
+              Lets dive into those listening patterns! How embarrasing could it be?
             </p>
             <button onClick={login} style={{
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
