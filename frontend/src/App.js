@@ -17,6 +17,7 @@ function App() {
   const [topArtistEvening, setTopArtistEvening] = useState(null);
   const [statsLoaded, setStatsLoaded] = useState(false);
   const [error, setError] = useState(null);
+  const [recentlyPlayed, setRecentlyPlayed] = useState([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -50,7 +51,7 @@ function App() {
         return res.json();
       };
 
-      const [a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = await Promise.all([
+      const [a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = await Promise.all([
         fetchJSON("http://127.0.0.1:8000/top-artists"),
         fetchJSON("http://127.0.0.1:8000/top-tracks"),
         fetchJSON("http://127.0.0.1:8000/hidden-gems"),
@@ -61,6 +62,7 @@ function App() {
         fetchJSON("http://127.0.0.1:8000/avg-popularity"),
         fetchJSON("http://127.0.0.1:8000/top-artist-morning"),
         fetchJSON("http://127.0.0.1:8000/top-artist-evening"),
+        fetchJSON("http://127.0.0.1:8000/recently-played-last-5"),
       ]);
 
       setTopArtists(a1.top_artists_last_4_weeks || []);
@@ -73,6 +75,7 @@ function App() {
       setAvgPopularity(a8.avg_popularity || null);
       setTopArtistMorning(a9.top_artist_morning || null);
       setTopArtistEvening(a10.top_artist_evening || null);
+      setRecentlyPlayed(a11.recently_played_last_5 || []);
       setStatsLoaded(true);
     } catch (err) {
       setError(err.message);
@@ -462,7 +465,8 @@ function App() {
                 </p>
               </div>
 
-              <div style={{
+              
+                <div style={{
                 background: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
                 borderRadius: "24px",
                 padding: "32px"
@@ -477,6 +481,51 @@ function App() {
                 </p>
               </div>
             </div>
+
+            {recentlyPlayed.length > 0 && (
+              <div style={{
+                background: "rgba(255,255,255,0.05)",
+                borderRadius: "28px",
+                padding: "36px",
+                marginBottom: "32px",
+                border: "1px solid rgba(255,255,255,0.1)"
+              }}>
+                <h2 style={{ marginTop: 0, marginBottom: "28px", fontSize: "28px", fontWeight: "800" }}>
+                  Recently Played
+                </h2>
+                <div style={{ display: "grid", gap: "16px" }}>
+                  {recentlyPlayed.map((track, i) => (
+                    <div key={i} style={{
+                      background: "rgba(255,255,255,0.03)",
+                      padding: "20px 24px",
+                      borderRadius: "16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      border: "1px solid rgba(255,255,255,0.08)"
+                    }}>
+                      <div>
+                        <div style={{ fontSize: "17px", fontWeight: "600", marginBottom: "4px" }}>
+                          {track.name}
+                        </div>
+                        <div style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)" }}>
+                          {track.artist}
+                        </div>
+                      </div>
+                      <div style={{
+                        color: "rgba(255,255,255,0.5)",
+                        fontSize: "13px",
+                        fontWeight: "600"
+                      }}>
+                        {new Date(track.played_at).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            
 
             {hiddenGems.length > 0 && (
               <div style={{
