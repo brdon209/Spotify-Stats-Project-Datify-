@@ -177,6 +177,25 @@ def top_artist_evening():
     top_artist = max(artists, key=artists.get) if artists else None
     return jsonify({"top_artist_evening": top_artist})
 
+@app.route("/recently-played-last-5")
+def recently_played_last_5():
+    """Get the last 5 tracks the user listened to"""
+    sp = get_user_spotify()
+    if not sp:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    results = sp.current_user_recently_played(limit=5)
+    tracks = [
+        {
+            "name": item["track"]["name"],
+            "artist": item["track"]["artists"][0]["name"],
+            "played_at": item["played_at"]
+        }
+        for item in results["items"]
+    ]
+    return jsonify({"recently_played_last_5": tracks})
+
+
 @app.route("/longest-listening-streak")
 def longest_listening_streak():
     sp = get_user_spotify()
