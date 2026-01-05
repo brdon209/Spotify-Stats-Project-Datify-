@@ -18,6 +18,7 @@ function App() {
   const [statsLoaded, setStatsLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [recentlyPlayed, setRecentlyPlayed] = useState([]);
+  const [songOfTheDay, setSongOfTheDay] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -51,7 +52,7 @@ function App() {
         return res.json();
       };
 
-      const [a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = await Promise.all([
+      const [a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = await Promise.all([
         fetchJSON("http://127.0.0.1:8000/top-artists"),
         fetchJSON("http://127.0.0.1:8000/top-tracks"),
         fetchJSON("http://127.0.0.1:8000/hidden-gems"),
@@ -63,6 +64,9 @@ function App() {
         fetchJSON("http://127.0.0.1:8000/top-artist-morning"),
         fetchJSON("http://127.0.0.1:8000/top-artist-evening"),
         fetchJSON("http://127.0.0.1:8000/recently-played-last-5"),
+        fetchJSON("http://127.0.0.1:8000/song-of-the-day"),
+       
+      
       ]);
 
       setTopArtists(a1.top_artists_last_4_weeks || []);
@@ -76,6 +80,7 @@ function App() {
       setTopArtistMorning(a9.top_artist_morning || null);
       setTopArtistEvening(a10.top_artist_evening || null);
       setRecentlyPlayed(a11.recently_played_last_5 || []);
+      setSongOfTheDay(a12.song || null);
       setStatsLoaded(true);
     } catch (err) {
       setError(err.message);
@@ -267,6 +272,84 @@ function App() {
               ))}
             </div>
 
+
+            {songOfTheDay && (
+              <div style={{
+                background: "rgba(255,255,255,0.05)",
+                borderRadius: "28px",
+                padding: "36px",
+                marginBottom: "48px",
+                border: "1px solid rgba(255,255,255,0.1)",
+                display: "flex",
+                gap: "32px",
+                alignItems: "center"
+              }}>
+                <img 
+                  src={songOfTheDay.image} 
+                  alt={songOfTheDay.album}
+                  style={{
+                    width: "200px",
+                    height: "200px",
+                    borderRadius: "16px",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.4)"
+                  }}
+                />
+                <div style={{ flex: 1 }}>
+                  <h2 style={{ 
+                    marginTop: 0, 
+                    marginBottom: "8px", 
+                    fontSize: "14px",
+                    fontWeight: "700",
+                    textTransform: "uppercase",
+                    letterSpacing: "1.5px",
+                    color: "rgba(255,255,255,0.6)"
+                  }}>
+                    🎵 Your Song of the Day
+                  </h2>
+                  <h3 style={{ 
+                    fontSize: "32px", 
+                    fontWeight: "800", 
+                    marginBottom: "8px",
+                    margin: "0 0 8px 0"
+                  }}>
+                    {songOfTheDay.name}
+                  </h3>
+                  <p style={{ 
+                    fontSize: "20px", 
+                    color: "rgba(255,255,255,0.7)",
+                    marginBottom: "16px"
+                  }}>
+                    {songOfTheDay.artist}
+                  </p>
+                  <p style={{ 
+                    fontSize: "16px", 
+                    color: "rgba(255,255,255,0.5)",
+                    marginBottom: "24px"
+                  }}>
+                    from {songOfTheDay.album}
+                  </p>
+                  <a 
+                    href={songOfTheDay.spotify_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-block",
+                      background: "linear-gradient(135deg, #1db954 0%, #1ed760 100%)",
+                      color: "#fff",
+                      padding: "12px 32px",
+                      borderRadius: "100px",
+                      textDecoration: "none",
+                      fontWeight: "700",
+                      fontSize: "16px",
+                      transition: "all 0.3s ease"
+                    }}
+                  >
+                    Play on Spotify
+                  </a>
+                </div>
+              </div>
+            )}
+
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
@@ -307,6 +390,9 @@ function App() {
                   </ResponsiveContainer>
                 </div>
               )}
+
+
+              
 
               <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: "20px" }}>
                 {mostPopularTrack && (

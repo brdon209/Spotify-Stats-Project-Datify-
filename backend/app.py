@@ -195,6 +195,30 @@ def recently_played_last_5():
     ]
     return jsonify({"recently_played_last_5": tracks})
 
+@app.route("/song-of-the-day")
+def song_of_the_day():
+    """Get a random song from user's top tracks"""
+    sp = get_user_spotify()
+    if not sp:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    results = sp.current_user_top_tracks(limit=50, time_range="short_term")
+    if not results["items"]:
+        return jsonify({"song": None})
+    
+    import random
+    random_track = random.choice(results["items"])
+    
+    return jsonify({
+        "song": {
+            "name": random_track["name"],
+            "artist": random_track["artists"][0]["name"],
+            "album": random_track["album"]["name"],
+            "image": random_track["album"]["images"][0]["url"] if random_track["album"]["images"] else None,
+            "spotify_url": random_track["external_urls"]["spotify"]
+        }
+    })
+
 
 @app.route("/longest-listening-streak")
 def longest_listening_streak():
