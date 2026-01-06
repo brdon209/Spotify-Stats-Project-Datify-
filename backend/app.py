@@ -77,6 +77,8 @@ def callback():
 def home():
     return jsonify({"message": "Hello from Flask backend!"})
 
+
+# data routes start here basically, first is top artists last 4 weeks
 @app.route("/top-artists")
 def top_artists():
     sp = get_user_spotify()
@@ -85,7 +87,7 @@ def top_artists():
     results = sp.current_user_top_artists(limit=10, time_range="short_term")
     artists = [artist['name'] for artist in results['items']]
     return jsonify({"top_artists_last_4_weeks": artists})
-
+# next is top tracks last 4 weeks
 @app.route("/top-tracks")
 def top_tracks():
     sp = get_user_spotify()
@@ -94,7 +96,7 @@ def top_tracks():
     results = sp.current_user_top_tracks(limit=10, time_range="short_term")
     tracks = [{"name": t["name"], "artist": t["artists"][0]["name"]} for t in results["items"]]
     return jsonify({"top_tracks_last_4_weeks": tracks})
-
+# next is top artists last 6 months
 @app.route("/top-artists-medium")
 def top_artists_medium():
     sp = get_user_spotify()
@@ -103,7 +105,7 @@ def top_artists_medium():
     results = sp.current_user_top_artists(limit=10, time_range="medium_term")
     artists = [artist["name"] for artist in results["items"]]
     return jsonify({"top_artists_last_6_months": artists})
-
+#   next is top artists all time
 @app.route("/top-artists-long")
 def top_artists_long():
     sp = get_user_spotify()
@@ -112,7 +114,7 @@ def top_artists_long():
     results = sp.current_user_top_artists(limit=10, time_range="long_term")
     artists = [artist["name"] for artist in results["items"]]
     return jsonify({"top_artists_all_time": artists})
-
+#   next is recently played tracks         
 @app.route("/recently-played")
 def recently_played():
     sp = get_user_spotify()
@@ -122,7 +124,7 @@ def recently_played():
     tracks = [{"name": item["track"]["name"], "artist": item["track"]["artists"][0]["name"]}
               for item in results["items"]]
     return jsonify({"recently_played": tracks})
-
+# next is hidden gems (top tracks with low popularity), (pulls popularity score from spotify API, has to be less than 50)
 @app.route("/hidden-gems")
 def hidden_gems():
     sp = get_user_spotify()
@@ -133,6 +135,7 @@ def hidden_gems():
               for t in results["items"] if t["popularity"] < 50]
     return jsonify({"hidden_gems": tracks})
 
+# most skipped tracks (tracks that appear most frequently in recently played, assuming frequent plays = skips)
 @app.route("/most-skipped")
 def most_skipped():
     sp = get_user_spotify()
@@ -147,6 +150,7 @@ def most_skipped():
     skipped_list = [{"track": t[0], "approx_plays": t[1]} for t in skipped_tracks]
     return jsonify({"most_skipped": skipped_list})
 
+# top artist morning (5am-11am) and evening (5pm-11pm)
 @app.route("/top-artist-morning")
 def top_artist_morning():
     sp = get_user_spotify()
@@ -162,6 +166,7 @@ def top_artist_morning():
     top_artist = max(artists, key=artists.get) if artists else None
     return jsonify({"top_artist_morning": top_artist})
 
+# top artist evening (5pm-11pm)
 @app.route("/top-artist-evening")
 def top_artist_evening():
     sp = get_user_spotify()
@@ -176,6 +181,8 @@ def top_artist_evening():
         artists[artist] = artists.get(artist, 0) + 1
     top_artist = max(artists, key=artists.get) if artists else None
     return jsonify({"top_artist_evening": top_artist})
+#   recently played last 5 tracks
+
 
 @app.route("/recently-played-last-5")
 def recently_played_last_5():
@@ -194,6 +201,8 @@ def recently_played_last_5():
         for item in results["items"]
     ]
     return jsonify({"recently_played_last_5": tracks})
+#   song of the day (random track from top tracks)
+
 
 @app.route("/song-of-the-day")
 def song_of_the_day():
