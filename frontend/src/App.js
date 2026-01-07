@@ -189,7 +189,7 @@ function App() {
               fontWeight: "700",
               cursor: "pointer"
             }}>
-              Reveal My Stats
+              Reveal Your Musical DNA
             </button>
           </div>
         )}
