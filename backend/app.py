@@ -1,3 +1,4 @@
+# Spotify Stats Backend - Flask API for user listening data
 import os
 from datetime import datetime
 from flask import Flask, jsonify, redirect, request
