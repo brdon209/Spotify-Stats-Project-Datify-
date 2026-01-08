@@ -319,6 +319,65 @@ def avg_popularity():
     avg = sum(t["popularity"] for t in results["items"]) / len(results["items"])
     return jsonify({"avg_popularity": round(avg, 1)})
 
+@app.route("/guess-song-game")
+def guess_song_game():
+    sp = get_user_spotify()
+    if not sp:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    import random
+    
+    # Get user's top tracks
+    results = sp.current_user_top_tracks(limit=50, time_range="short_term")
+    tracks = results["items"]
+    
+    # Filter for tracks that have preview URLs
+    tracks_with_preview = [t for t in tracks if t.get("preview_url")]
+    
+    # If no previews available, try medium_term
+    if not tracks_with_preview:
+        results = sp.current_user_top_tracks(limit=50, time_range="medium_term")
+        tracks = results["items"]
+        tracks_with_preview = [t for t in tracks if t.get("preview_url")]
+    
+    # If still no previews, return all tracks anyway (audio just won't play)
+    if not tracks_with_preview:
+        tracks_with_preview = tracks[:10] if tracks else []
+    
+    if not tracks_with_preview:
+        return jsonify({
+            "preview_url": None,
+            "correct_id": "unknown",
+            "options": []
+        })
+    
+    # Pick random correct answer (must have preview)
+    correct = random.choice(tracks_with_preview)
+    
+    # Pick 3 wrong answers from all tracks
+    wrong_tracks = [t for t in tracks if t["id"] != correct["id"]]
+    wrong_answers = random.sample(wrong_tracks, min(3, len(wrong_tracks)))
+    
+    # Shuffle all options
+    all_options = [correct] + wrong_answers
+    random.shuffle(all_options)
+
+    print(f"DEBUG: Preview URL = {correct.get('preview_url')}")
+    print(f"DEBUG: Track name = {correct['name']}")
+    
+    return jsonify({
+        "preview_url": correct.get("preview_url"),
+        "correct_id": correct["id"],
+        "options": [
+            {
+                "id": t["id"],
+                "name": t["name"],
+                "artist": t["artists"][0]["name"]
+            }
+            for t in all_options
+        ]
+    })
+
 
 
 
