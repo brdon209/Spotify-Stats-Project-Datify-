@@ -19,6 +19,12 @@ function App() {
   const [error, setError] = useState(null);
   const [recentlyPlayed, setRecentlyPlayed] = useState([]);
   const [songOfTheDay, setSongOfTheDay] = useState(null);
+  const [gameActive, setGameActive] = useState(false);
+  const [gameData, setGameData] = useState(null);
+  const [gameScore, setGameScore] = useState(0);
+  const [gameRound, setGameRound] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [showResult, setShowResult] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -87,6 +93,50 @@ function App() {
     }
     setLoading(false);
   };
+
+
+  const startGame = async () => {
+  setGameActive(true);
+  setGameScore(0);
+  setGameRound(0);
+  loadGameRound();
+};
+
+const loadGameRound = async () => {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/guess-song-game", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    
+    // ADD THESE TWO LINES:
+    console.log("Game data received:", data);
+    console.log("Preview URL:", data.preview_url);
+    
+    setGameData(data);
+    setSelectedAnswer(null);
+    setShowResult(false);
+    setGameRound(prev => prev + 1);
+  } catch (err) {
+    alert("Failed to load game round");
+  }
+};
+
+const handleAnswer = (optionId) => {
+  setSelectedAnswer(optionId);
+  setShowResult(true);
+  if (optionId === gameData.correct_id) {
+    setGameScore(prev => prev + 1);
+  }
+};
+
+const nextRound = () => {
+  if (gameRound < 5) {
+    loadGameRound();
+  } else {
+    setGameActive(false);
+  }
+};
 
   const pieColors = ["#667eea", "#f857a6", "#4facfe", "#43e97b", "#feca57"];
 
@@ -271,6 +321,141 @@ function App() {
                 </div>
               ))}
             </div>
+
+
+            <div style={{ textAlign: "center", marginBottom: "48px" }}>
+              <button
+                onClick={startGame}
+                style={{
+                  background: "linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "100px",
+                  padding: "18px 56px",
+                  fontSize: "17px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  boxShadow: "0 8px 24px rgba(255, 107, 107, 0.4)"
+                }}
+              >
+                🎵 Play: Guess Your Song!
+              </button>
+            </div>
+
+            {gameActive && gameData && (
+              <div style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0,0,0,0.9)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+                padding: "20px"
+              }}>
+                <div style={{
+                  background: "linear-gradient(135deg, #0f0c29 0%, #302b63 100%)",
+                  borderRadius: "32px",
+                  padding: "48px",
+                  maxWidth: "600px",
+                  width: "100%",
+                  border: "2px solid rgba(255,255,255,0.1)"
+                }}>
+                  <div style={{ textAlign: "center", marginBottom: "32px" }}>
+                    <h2 style={{ fontSize: "32px", margin: "0 0 16px 0" }}>
+                      🎵 Guess Your Song!
+                    </h2>
+                    <p style={{ color: "rgba(255,255,255,0.7)", margin: 0 }}>
+                      Round {gameRound}/5 | Score: {gameScore}
+                    </p>
+                  </div>
+
+                  <div style={{ marginBottom: "32px" }}>
+                    <div style={{
+                      background: "rgba(255,255,255,0.05)",
+                      borderRadius: "16px",
+                      padding: "20px",
+                      textAlign: "center"
+                    }}>
+                      <p style={{ margin: "0 0 12px 0", color: "rgba(255,255,255,0.7)" }}>
+                        Listen on Spotify:
+                      </p>
+                      <iframe 
+                        key={gameData.correct_id}
+                        src={`https://open.spotify.com/embed/track/${gameData.correct_id}?utm_source=generator`}
+                        width="100%" 
+                        height="152" 
+                        frameBorder="0" 
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"
+                        style={{ borderRadius: "12px" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gap: "16px", marginBottom: "32px" }}>
+                    {gameData.options.map((option, i) => {
+                      const isSelected = selectedAnswer === option.id;
+                      const isCorrect = option.id === gameData.correct_id;
+                      const showColor = showResult && (isSelected || isCorrect);
+                      
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => !showResult && handleAnswer(option.id)}
+                          disabled={showResult}
+                          style={{
+                            background: showColor
+                              ? (isCorrect ? "linear-gradient(135deg, #43e97b, #38f9d7)" : "linear-gradient(135deg, #ff6b6b, #ee5a6f)")
+                              : "rgba(255,255,255,0.05)",
+                            border: "2px solid rgba(255,255,255,0.1)",
+                            borderRadius: "16px",
+                            padding: "20px",
+                            color: "#fff",
+                            fontSize: "16px",
+                            fontWeight: "600",
+                            cursor: showResult ? "default" : "pointer",
+                            textAlign: "left",
+                            transition: "all 0.3s ease"
+                          }}
+                        >
+                          <div>{option.name}</div>
+                          <div style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)", marginTop: "4px" }}>
+                            {option.artist}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                 {showResult && (
+                    <div style={{ textAlign: "center" }}>
+                      <p style={{ fontSize: "20px", fontWeight: "600", marginBottom: "24px" }}>
+                        {selectedAnswer === gameData.correct_id ? "🎉 Correct!" : "❌ Wrong!"}
+                      </p>
+                      <button
+                        onClick={nextRound}
+                        style={{
+                          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "100px",
+                          padding: "16px 48px",
+                          fontSize: "16px",
+                          fontWeight: "700",
+                          cursor: "pointer"
+                        }}
+                      >
+                        {gameRound < 5 ? "Next Round →" : `View Results (${gameScore}/5)`}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
 
             {songOfTheDay && (
