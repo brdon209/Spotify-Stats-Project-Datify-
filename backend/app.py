@@ -32,7 +32,7 @@ def handle_generic_error(error):
     return jsonify({"error": f"Server error: {str(error)}"}), 500
 
 # Spotify scope
-scope = "user-top-read user-read-recently-played"
+scope = "user-top-read user-read-recently-played streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state"
 
 # Helper function to get Spotify object from access token in request
 def get_user_spotify():
