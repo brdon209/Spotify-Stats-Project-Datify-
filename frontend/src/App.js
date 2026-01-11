@@ -2,6 +2,162 @@ import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Music, TrendingUp, Clock, Award, Zap, Sparkles, Headphones } from "lucide-react";
 
+
+
+
+// Custom Audio Player Component (no track name shown!)
+// Spotify Web Playback SDK Player Component (NO track name shown!)
+// Spotify Web Playback SDK Player Component (NO track name shown!)
+// Spotify Web Playback SDK Player Component (NO track name shown!)
+// DEBUG VERSION - Shows what's happening
+// DEBUG VERSION with better cleanup
+// FINAL DEBUG VERSION - checks if SDK already exists
+function CustomAudioPlayer({ trackId, token }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [player, setPlayer] = useState(null);
+  const [deviceId, setDeviceId] = useState(null);
+  const [isReady, setIsReady] = useState(false);
+  const [debugMsg, setDebugMsg] = useState('Initializing...');
+
+  // Initialize player - simpler approach
+  useEffect(() => {
+    if (!token) {
+      setDebugMsg('No token');
+      return;
+    }
+
+    // Check if SDK already loaded
+    if (window.Spotify && window.Spotify.Player) {
+      setDebugMsg('SDK found, creating player...');
+      initPlayer();
+    } else {
+      setDebugMsg('Loading SDK...');
+      // Load SDK if not present
+      if (!document.querySelector('script[src*="spotify-player"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://sdk.scdn.co/spotify-player.js';
+        script.async = true;
+        document.body.appendChild(script);
+      }
+
+      window.onSpotifyWebPlaybackSDKReady = () => {
+        setDebugMsg('SDK ready, creating player...');
+        initPlayer();
+      };
+    }
+
+    function initPlayer() {
+      if (player) {
+        console.log('Player already exists, skipping...');
+        return;
+      }
+
+      const spotifyPlayer = new window.Spotify.Player({
+        name: `Datify ${Date.now()}`,
+        getOAuthToken: cb => { cb(token); },
+        volume: 0.8
+      });
+
+      spotifyPlayer.addListener('ready', ({ device_id }) => {
+        console.log('🎉 PLAYER READY:', device_id);
+        setDebugMsg('Ready!');
+        setDeviceId(device_id);
+        setIsReady(true);
+      });
+
+      spotifyPlayer.addListener('authentication_error', ({ message }) => {
+        console.error('AUTH ERROR:', message);
+        setDebugMsg('❌ RE-LOGIN REQUIRED!');
+      });
+
+      spotifyPlayer.addListener('account_error', ({ message }) => {
+        console.error('ACCOUNT ERROR:', message);
+        setDebugMsg('❌ PREMIUM REQUIRED!');
+      });
+
+      console.log('Connecting player...');
+      setDebugMsg('Connecting to Spotify...');
+      
+      spotifyPlayer.connect().then(success => {
+        console.log('Connect result:', success);
+        if (!success) {
+          setDebugMsg('❌ Connection failed - try refreshing page');
+        }
+      });
+
+      setPlayer(spotifyPlayer);
+    }
+
+    return () => {
+      if (player) {
+        console.log('Disconnecting player');
+        player.disconnect();
+      }
+    };
+  }, [token]);
+
+  // Play track
+  useEffect(() => {
+    if (!deviceId || !trackId || !token) return;
+
+    console.log('Playing:', trackId);
+    fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ uris: [`spotify:track:${trackId}`] })
+    })
+    .then(r => console.log('Play response:', r.status))
+    .catch(e => console.error('Play error:', e));
+  }, [trackId, deviceId, token]);
+
+  return (
+    <div style={{
+      background: "rgba(255,255,255,0.05)",
+      borderRadius: "16px",
+      padding: "24px",
+      textAlign: "center"
+    }}>
+      <p style={{ margin: "0 0 20px 0", fontSize: "14px", color: debugMsg.includes('❌') ? '#ff6b6b' : 'rgba(255,255,255,0.7)' }}>
+        {debugMsg}
+      </p>
+
+      {isReady && (
+        <button onClick={() => player?.togglePlay()} style={{
+          background: "linear-gradient(135deg, #1db954 0%, #1ed760 100%)",
+          border: "none",
+          borderRadius: "50%",
+          width: "64px",
+          height: "64px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto",
+          cursor: "pointer"
+        }}>
+          <span style={{ fontSize: "24px", color: "#fff" }}>▶️</span>
+        </button>
+      )}
+
+      {debugMsg.includes('❌') && (
+        <button onClick={() => window.location.reload()} style={{
+          background: "#667eea",
+          color: "#fff",
+          border: "none",
+          borderRadius: "8px",
+          padding: "8px 16px",
+          marginTop: "12px",
+          cursor: "pointer",
+          fontSize: "13px"
+        }}>
+          Refresh Page
+        </button>
+      )}
+    </div>
+  );
+}
 function App() {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -151,6 +307,7 @@ const nextRound = () => {
       <style>{`
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       `}</style>
+    
 
       <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: "80px" }}>
@@ -374,27 +531,12 @@ const nextRound = () => {
                   </div>
 
                   <div style={{ marginBottom: "32px" }}>
-                    <div style={{
-                      background: "rgba(255,255,255,0.05)",
-                      borderRadius: "16px",
-                      padding: "20px",
-                      textAlign: "center"
-                    }}>
-                      <p style={{ margin: "0 0 12px 0", color: "rgba(255,255,255,0.7)" }}>
-                        Listen on Spotify:
-                      </p>
-                      <iframe 
-                        key={gameData.correct_id}
-                        src={`https://open.spotify.com/embed/track/${gameData.correct_id}?utm_source=generator`}
-                        width="100%" 
-                        height="152" 
-                        frameBorder="0" 
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        loading="lazy"
-                        style={{ borderRadius: "12px" }}
-                      />
-                    </div>
+                    <CustomAudioPlayer 
+                      trackId={gameData.correct_id}
+                      token={token}
+                    />
                   </div>
+                  
 
                   <div style={{ display: "grid", gap: "16px", marginBottom: "32px" }}>
                     {gameData.options.map((option, i) => {
