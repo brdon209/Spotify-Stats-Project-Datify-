@@ -59,7 +59,7 @@ function CustomAudioPlayer({ trackId, token }) {
       });
 
       spotifyPlayer.addListener('ready', ({ device_id }) => {
-        console.log('🎉 PLAYER READY:', device_id);
+        console.log(' PLAYER IS READY:', device_id);
         setDebugMsg('Ready!');
         setDeviceId(device_id);
         setIsReady(true);
@@ -81,7 +81,7 @@ function CustomAudioPlayer({ trackId, token }) {
       spotifyPlayer.connect().then(success => {
         console.log('Connect result:', success);
         if (!success) {
-          setDebugMsg('❌ Connection failed - try refreshing page');
+          setDebugMsg(' Connection failed - try refreshing page');
         }
       });
 
@@ -495,7 +495,7 @@ const nextRound = () => {
                   boxShadow: "0 8px 24px rgba(255, 107, 107, 0.4)"
                 }}
               >
-                🎵 Play: Guess Your Song!
+                 Play: Guess Your Song!
               </button>
             </div>
 
@@ -523,7 +523,7 @@ const nextRound = () => {
                 }}>
                   <div style={{ textAlign: "center", marginBottom: "32px" }}>
                     <h2 style={{ fontSize: "32px", margin: "0 0 16px 0" }}>
-                      🎵 Guess Your Song!
+                       Guess Your Song!
                     </h2>
                     <p style={{ color: "rgba(255,255,255,0.7)", margin: 0 }}>
                       Round {gameRound}/5 | Score: {gameScore}
@@ -631,7 +631,7 @@ const nextRound = () => {
                     letterSpacing: "1.5px",
                     color: "rgba(255,255,255,0.6)"
                   }}>
-                    🎵 Your Song of the Day
+                     Your Song of the Day(Randomly Selected from Most Listened)
                   </h2>
                   <h3 style={{ 
                     fontSize: "32px", 
