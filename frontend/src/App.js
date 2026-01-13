@@ -181,6 +181,8 @@ function App() {
   const [gameRound, setGameRound] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [showResult, setShowResult] = useState(false);
+  const [nicheScore, setNicheScore] = useState(null);
+  const [showFormulaModal, setShowFormulaModal] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -214,7 +216,7 @@ function App() {
         return res.json();
       };
 
-      const [a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = await Promise.all([
+      const [a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = await Promise.all([
         fetchJSON("http://127.0.0.1:8000/top-artists"),
         fetchJSON("http://127.0.0.1:8000/top-tracks"),
         fetchJSON("http://127.0.0.1:8000/hidden-gems"),
@@ -227,6 +229,7 @@ function App() {
         fetchJSON("http://127.0.0.1:8000/top-artist-evening"),
         fetchJSON("http://127.0.0.1:8000/recently-played-last-5"),
         fetchJSON("http://127.0.0.1:8000/song-of-the-day"),
+        fetchJSON("http://127.0.0.1:8000/niche-score"),
        
       
       ]);
@@ -243,6 +246,7 @@ function App() {
       setTopArtistEvening(a10.top_artist_evening || null);
       setRecentlyPlayed(a11.recently_played_last_5 || []);
       setSongOfTheDay(a12.song || null);
+      setNicheScore(a13 || null);
       setStatsLoaded(true);
     } catch (err) {
       setError(err.message);
@@ -442,7 +446,8 @@ const nextRound = () => {
                 { icon: Award, title: "Listening Streak", value: `${longestStreak}`, sub: "days", g: ["#667eea", "#764ba2"] },
                 { icon: TrendingUp, title: "Taste Index", value: avgPopularity !== null ? `${avgPopularity}` : "—", sub: avgPopularity > 60 ? "Mainstream" : avgPopularity > 30 ? "Eclectic" : "Underground", g: ["#f857a6", "#ff5858"] },
                 { icon: Zap, title: "Hidden Gems", value: hiddenGems.length, sub: "rare finds", g: ["#4facfe", "#00f2fe"] },
-                { icon: Headphones, title: "Top Tracks", value: topTracks.length, sub: "favorites", g: ["#43e97b", "#38f9d7"] }
+                { icon: Headphones, title: "Top Tracks", value: topTracks.length, sub: "favorites", g: ["#43e97b", "#38f9d7"] },
+                { icon: Sparkles, title: "Niche Score", value: nicheScore ? nicheScore.niche_score : "—", sub: nicheScore ? nicheScore.rating : "Calculating...", g: ["#667eea", "#764ba2"], special: "niche" }
               ].map((card, idx) => (
                 <div key={idx} style={{
                   background: `linear-gradient(135deg, ${card.g[0]}, ${card.g[1]})`,
@@ -472,9 +477,28 @@ const nextRound = () => {
                   <div style={{ color: "#fff", fontSize: "42px", fontWeight: "800", marginBottom: "6px" }}>
                     {card.value}
                   </div>
-                  <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "14px", fontWeight: "500" }}>
+                  <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "14px", fontWeight: "500", marginBottom: card.special === "niche" ? "12px" : "0" }}>
                     {card.sub}
                   </div>
+                  
+                  {card.special === "niche" && nicheScore && (
+                    <button
+                      onClick={() => setShowFormulaModal(true)}
+                      style={{
+                        background: "rgba(255,255,255,0.2)",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                        borderRadius: "8px",
+                        padding: "6px 12px",
+                        color: "#fff",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        marginTop: "8px"
+                      }}
+                    >
+                      How do we calculate this?
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -598,6 +622,104 @@ const nextRound = () => {
                 </div>
               </div>
             )}
+
+            </div>
+            )}
+
+            {/* Formula Explanation Modal */}
+            {showFormulaModal && nicheScore && (
+              <div style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0,0,0,0.9)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+                padding: "20px"
+              }}>
+                <div style={{
+                  background: "linear-gradient(135deg, #0f0c29 0%, #302b63 100%)",
+                  borderRadius: "32px",
+                  padding: "48px",
+                  maxWidth: "700px",
+                  width: "100%",
+                  border: "2px solid rgba(255,255,255,0.1)",
+                  maxHeight: "90vh",
+                  overflowY: "auto"
+                }}>
+                  <h2 style={{ fontSize: "32px", margin: "0 0 24px 0", textAlign: "center" }}>
+                    ✨ Niche Connoisseur Score
+                  </h2>
+                  
+                  <div style={{ fontSize: "16px", lineHeight: "1.6", marginBottom: "32px", color: "rgba(255,255,255,0.8)" }}>
+                    <p>Your score of <strong style={{ color: "#a855f7", fontSize: "24px" }}>{nicheScore.niche_score}/100</strong> is calculated using:</p>
+                  </div>
+
+                  <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: "16px", padding: "24px", marginBottom: "24px" }}>
+                    <h3 style={{ fontSize: "18px", marginTop: 0, color: "#a855f7" }}>The Formula</h3>
+                    <code style={{ fontSize: "14px", color: "#4ade80", display: "block", marginBottom: "16px", whiteSpace: "pre-wrap" }}>
+                      Score = (OF × HGM) - MP + DB{'\n'}
+                      Clamped between 0-100
+                    </code>
+                    
+                    <div style={{ fontSize: "14px", lineHeight: "1.8" }}>
+                      <div style={{ marginBottom: "12px" }}>
+                        <strong style={{ color: "#fbbf24" }}>OF (Obscurity Factor)</strong> = 100 - avg_popularity<br/>
+                        <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px" }}>Your value: {nicheScore.breakdown.obscurity_factor}</span>
+                      </div>
+                      
+                      <div style={{ marginBottom: "12px" }}>
+                        <strong style={{ color: "#fbbf24" }}>HGM (Hidden Gems Multiplier)</strong> = 1 + (hidden_gems / 50)<br/>
+                        <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px" }}>Your value: {nicheScore.breakdown.hidden_gems_multiplier}× ({nicheScore.breakdown.hidden_gems_count} hidden gems)</span>
+                      </div>
+                      
+                      <div style={{ marginBottom: "12px" }}>
+                        <strong style={{ color: "#fbbf24" }}>MP (Mainstream Penalty)</strong> = (mainstream_tracks / total) × 30<br/>
+                        <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px" }}>Your value: -{nicheScore.breakdown.mainstream_penalty}</span>
+                      </div>
+                      
+                      <div>
+                        <strong style={{ color: "#fbbf24" }}>DB (Diversity Bonus)</strong> = (unique_artists / total × 50), max 20<br/>
+                        <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px" }}>Your value: +{nicheScore.breakdown.diversity_bonus} ({nicheScore.breakdown.unique_artists} unique artists)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ background: "rgba(168,85,247,0.1)", borderRadius: "16px", padding: "20px", marginBottom: "24px", border: "1px solid rgba(168,85,247,0.3)" }}>
+                    <h4 style={{ margin: "0 0 12px 0", color: "#a855f7" }}>Rating Tiers</h4>
+                    <div style={{ fontSize: "14px", lineHeight: "2" }}>
+                      <div> 80-100: Underground Legend</div>
+                      <div> 60-79: Niche Explorer</div>
+                      <div> 40-59: Eclectic Listener</div>
+                      <div> 20-39: Casual Discoverer</div>
+                      <div>0-19: Mainstream Maven</div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowFormulaModal(false)}
+                    style={{
+                      background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "100px",
+                      padding: "16px 48px",
+                      fontSize: "16px",
+                      fontWeight: "700",
+                      cursor: "pointer",
+                      width: "100%"
+                    }}
+                  >
+                    Got it!
+                  </button>
+                </div>
+              </div>
+            )}
+
 
 
             {songOfTheDay && (
@@ -985,8 +1107,7 @@ const nextRound = () => {
               </div>
             )}
           </div>
-        )}
-      </div>
+        
     </div>
   );
 }
