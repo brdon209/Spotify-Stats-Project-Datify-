@@ -379,6 +379,63 @@ def guess_song_game():
     })
 
 
+@app.route("/niche-score")
+def niche_score():
+    """Calculate user's Niche Connoisseur Score (0-100)"""
+    sp = get_user_spotify()
+    if not sp:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    # Get top tracks for calculation
+    results = sp.current_user_top_tracks(limit=50, time_range="medium_term")
+    tracks = results["items"]
+    
+    if not tracks:
+        return jsonify({"niche_score": 0, "rating": "No data"})
+    
+    # Calculate components
+    total_tracks = len(tracks)
+    avg_popularity = sum(t["popularity"] for t in tracks) / total_tracks
+    hidden_gems_count = len([t for t in tracks if t["popularity"] < 50])
+    mainstream_count = len([t for t in tracks if t["popularity"] > 70])
+    unique_artists = len(set(t["artists"][0]["name"] for t in tracks))
+    
+    # Formula components
+    obscurity_factor = 100 - avg_popularity  # Higher score for lower popularity
+    hidden_gems_multiplier = 1 + (hidden_gems_count / 50)  # Up to 2x multiplier
+    mainstream_penalty = (mainstream_count / total_tracks) * 30  # Up to -30 points
+    diversity_bonus = min((unique_artists / total_tracks) * 50, 20)  # Capped at +20
+    
+    # Final calculation
+    raw_score = (obscurity_factor * hidden_gems_multiplier) - mainstream_penalty + diversity_bonus
+    niche_score = max(0, min(100, round(raw_score, 1)))  # Clamp between 0-100
+    
+    # Determine rating category
+    if niche_score >= 80:
+        rating = "Underground Legend"
+    elif niche_score >= 60:
+        rating = "Niche Explorer"
+    elif niche_score >= 40:
+        rating = "Eclectic Listener"
+    elif niche_score >= 20:
+        rating = "Casual Discoverer"
+    else:
+        rating = "Mainstream Maven"
+    
+    return jsonify({
+        "niche_score": niche_score,
+        "rating": rating,
+        "breakdown": {
+            "obscurity_factor": round(obscurity_factor, 1),
+            "hidden_gems_multiplier": round(hidden_gems_multiplier, 2),
+            "mainstream_penalty": round(mainstream_penalty, 1),
+            "diversity_bonus": round(diversity_bonus, 1),
+            "avg_popularity": round(avg_popularity, 1),
+            "hidden_gems_count": hidden_gems_count,
+            "unique_artists": unique_artists,
+            "total_tracks": total_tracks
+        }
+    })
 
 
 # cut off, heres where we run it
