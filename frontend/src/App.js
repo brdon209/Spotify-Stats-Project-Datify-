@@ -435,7 +435,7 @@ const nextRound = () => {
         )}
 
         {statsLoaded && (
-          <div>
+          <>
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
@@ -623,8 +623,6 @@ const nextRound = () => {
               </div>
             )}
 
-            </div>
-            )}
 
             {/* Formula Explanation Modal */}
             {showFormulaModal && nicheScore && (
@@ -1106,8 +1104,9 @@ const nextRound = () => {
                 </div>
               </div>
             )}
-          </div>
-        
+          </>
+        )}
+      </div>
     </div>
   );
 }
