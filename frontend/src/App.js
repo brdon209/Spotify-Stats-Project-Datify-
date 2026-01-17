@@ -507,24 +507,46 @@ const nextRound = () => {
             <div style={{ textAlign: "center", marginBottom: "48px" }}>
               <button
                 onClick={startGame}
+                disabled={gameActive}
                 style={{
-                  background: "linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)",
+                  background: gameActive 
+                    ? "linear-gradient(135deg, #999 0%, #666 100%)" 
+                    : "linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)",
                   color: "#fff",
                   border: "none",
                   borderRadius: "100px",
                   padding: "18px 56px",
                   fontSize: "17px",
                   fontWeight: "700",
-                  cursor: "pointer",
-                  boxShadow: "0 8px 24px rgba(255, 107, 107, 0.4)"
+                  cursor: gameActive ? "not-allowed" : "pointer",
+                  boxShadow: "0 8px 24px rgba(255, 107, 107, 0.4)",
+                  opacity: gameActive ? 0.6 : 1
                 }}
               >
-                 Play: Guess Your Song!
+                 {gameActive ? "Game in Progress..." : "Play: Guess Your Song!"}
               </button>
             </div>
 
             {gameActive && gameData && (
-              <div style={{
+              <div 
+                ref={(el) => {
+                  if (el) {
+                    setTimeout(() => el.focus(), 0);
+                  }
+                }}
+                tabIndex={0}
+                onClick={(e) => e.currentTarget.focus()}
+                onKeyDown={(e) => {
+                  if (showResult) return;
+                  const key = e.key;
+                  if (['1', '2', '3', '4'].includes(key)) {
+                    const index = parseInt(key) - 1;
+                    if (gameData.options[index]) {
+                      handleAnswer(gameData.options[index].id);
+                    }
+                  }
+                }}
+                style={{
                 position: "fixed",
                 top: 0,
                 left: 0,
@@ -588,9 +610,22 @@ const nextRound = () => {
                             transition: "all 0.3s ease"
                           }}
                         >
-                          <div>{option.name}</div>
-                          <div style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)", marginTop: "4px" }}>
-                            {option.artist}
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            <div style={{ 
+                              background: "rgba(255,255,255,0.2)", 
+                              borderRadius: "8px", 
+                              padding: "4px 8px",
+                              fontSize: "14px",
+                              fontWeight: "700"
+                            }}>
+                              {i + 1}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div>{option.name}</div>
+                              <div style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)", marginTop: "4px" }}>
+                                {option.artist}
+                              </div>
+                            </div>
                           </div>
                         </button>
                       );
